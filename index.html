@@ -46,35 +46,29 @@
     const tirosInimigos = [];
 
     let pontos = 0;
-    let recorde = localStorage.getItem("recordeNave") || 0;
+    let recorde = Number(localStorage.getItem("recordeNave")) || 0;
     let fimDeJogo = false;
 
     const teclas = {};
     document.addEventListener("keydown", e => teclas[e.key] = true);
     document.addEventListener("keyup", e => teclas[e.key] = false);
 
-    // CONTROLE DE TIRO (rate limit)
     let ultimoTiro = 0;
-    const intervaloTiro = 180; // ms
+    const intervaloTiro = 180;
 
     function atirar() {
       const agora = Date.now();
-      if (agora - ultimoTiro > intervaloTiro && !fimDeJogo) {
+      if (agora - ultimoTiro >= intervaloTiro && !fimDeJogo) {
         ultimoTiro = agora;
         somTiro.currentTime = 0;
         somTiro.play();
         tiros.push({ x: nave.x + nave.w / 2 - 2, y: nave.y, speed: 7 });
       }
+    }
 
     function criarInimigo() {
       if (!fimDeJogo) {
-        inimigos.push({
-          x: Math.random() * 360,
-          y: -40,
-          w: 40,
-          h: 40,
-          speed: 2
-        });
+        inimigos.push({ x: Math.random() * 360, y: -40, w: 40, h: 40, speed: 2 });
       }
     }
 
@@ -87,21 +81,19 @@
       if (teclas["ArrowRight"] && nave.x < 360) nave.x += nave.speed;
       if (teclas["ArrowUp"]) atirar();
 
-      // tiros do jogador
       tiros.forEach(t => t.y -= t.speed);
       for (let i = tiros.length - 1; i >= 0; i--) {
         if (tiros[i].y < -20) tiros.splice(i, 1);
       }
 
-      // inimigos
       inimigos.forEach(i => i.y += i.speed);
+
       inimigos.forEach(i => {
         if (Math.random() < 0.01) {
           tirosInimigos.push({ x: i.x + 18, y: i.y + 40, speed: 4 });
         }
       });
 
-      // tiros inimigos
       tirosInimigos.forEach(t => t.y += t.speed);
       for (let i = tirosInimigos.length - 1; i >= 0; i--) {
         if (tirosInimigos[i].y > canvas.height + 20) tirosInimigos.splice(i, 1);
@@ -111,7 +103,6 @@
     }
 
     function colisao() {
-      // tiro do jogador x inimigo
       tiros.forEach((t, ti) => {
         inimigos.forEach((i, ii) => {
           if (t.x < i.x + i.w && t.x + 5 > i.x && t.y < i.y + i.h && t.y + 10 > i.y) {
@@ -124,7 +115,6 @@
         });
       });
 
-      // tiro inimigo x nave
       tirosInimigos.forEach((t, ti) => {
         if (t.x < nave.x + nave.w && t.x + 5 > nave.x && t.y < nave.y + nave.h && t.y + 10 > nave.y) {
           tirosInimigos.splice(ti, 1);
@@ -135,7 +125,6 @@
         }
       });
 
-      // nave x inimigo
       inimigos.forEach((i, ii) => {
         if (nave.x < i.x + i.w && nave.x + nave.w > i.x && nave.y < i.y + i.h && nave.y + nave.h > i.y) {
           inimigos.splice(ii, 1);
@@ -157,7 +146,7 @@
     }
 
     document.addEventListener("keydown", e => {
-      if (fimDeJogo && e.key.toLowerCase() === "r") location.reload();
+      if (fimDeJogo && e.key.toLowerCase() === 'r') location.reload();
     });
 
     function desenharHUD() {
