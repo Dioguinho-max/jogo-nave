@@ -53,12 +53,18 @@
     document.addEventListener("keydown", e => teclas[e.key] = true);
     document.addEventListener("keyup", e => teclas[e.key] = false);
 
+    let ultimoTiro = 0;
+    const intervaloTiro = 180; // ms (controle para não virar metralhadora)
+
     function atirar() {
-      if (tiros.length < 5 && !fimDeJogo) {
+      const agora = Date.now();
+      if (agora - ultimoTiro > intervaloTiro && !fimDeJogo) {
+        ultimoTiro = agora;
         somTiro.currentTime = 0;
         somTiro.play();
-        tiros.push({ x: nave.x + 18, y: nave.y, speed: 7 });
+        tiros.push({ x: nave.x + nave.w / 2 - 2, y: nave.y, speed: 7 });
       }
+    }
     }
 
     function criarInimigo() {
@@ -102,6 +108,7 @@
     }
 
     function colisao() {
+      // tiro do jogador x inimigo
       tiros.forEach((t, ti) => {
         inimigos.forEach((i, ii) => {
           if (t.x < i.x + i.w && t.x + 5 > i.x && t.y < i.y + i.h && t.y + 10 > i.y) {
@@ -114,10 +121,24 @@
         });
       });
 
+      // tiro inimigo x nave
       tirosInimigos.forEach((t, ti) => {
         if (t.x < nave.x + nave.w && t.x + 5 > nave.x && t.y < nave.y + nave.h && t.y + 10 > nave.y) {
           tirosInimigos.splice(ti, 1);
           nave.vidas--;
+          somExplosao.currentTime = 0;
+          somExplosao.play();
+          if (nave.vidas <= 0) gameOver();
+        }
+      });
+
+      // nave x inimigo (dano por colisão)
+      inimigos.forEach((i, ii) => {
+        if (nave.x < i.x + i.w && nave.x + nave.w > i.x && nave.y < i.y + i.h && nave.y + nave.h > i.y) {
+          inimigos.splice(ii, 1);
+          nave.vidas--;
+          somExplosao.currentTime = 0;
+          somExplosao.play();
           if (nave.vidas <= 0) gameOver();
         }
       });
