@@ -1,115 +1,107 @@
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
-  <meta charset="UTF-8">
-  <title>Jogo da Nave</title>
-  <style>
-    body {
-      margin: 0;
-      background: black;
-      color: white;
-      text-align: center;
-      font-family: Arial, sans-serif;
-    }
-    canvas {
-      background: black;
-      display: block;
-      margin: auto;
-      border: 2px solid white;
-    }
-  </style>
+<meta charset="UTF-8">
+<title>Jogo da Nave</title>
+<style>
+body {
+margin: 0;
+background: radial-gradient(circle at top, #020024, #000000);
+color: white;
+text-align: center;
+font-family: Arial, sans-serif;
+}
+canvas {
+background: black;
+display: block;
+margin: auto;
+border: 2px solid #0ff;
+}
+</style>
 </head>
 <body>
-  <h2>🚀 Jogo da Nave Espacial</h2>
-  <p>Setas para mover | Espaço para atirar</p>
-  <canvas id="game" width="400" height="600"></canvas>
+<h2>🚀 Jogo da Nave Espacial</h2>
+<p>← → mover | ↑ atirar</p>
+<canvas id="game" width="400" height="600"></canvas>
 
-  <script>
-    const canvas = document.getElementById("game");
-    const ctx = canvas.getContext("2d");
 
-    const nave = { x: 180, y: 520, w: 40, h: 40, speed: 5 };
-    const tiros = [];
-    const inimigos = [];
-    const tirosInimigos = [];
+<script>
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
 
-    const teclas = {};
 
-    document.addEventListener("keydown", e => teclas[e.key] = true);
-    document.addEventListener("keyup", e => teclas[e.key] = false);
+const nave = { x: 180, y: 520, w: 40, h: 40, speed: 5, vidas: 3 };
+const tiros = [];
+const inimigos = [];
+const tirosInimigos = [];
 
-    function atirar() {
-      tiros.push({ x: nave.x + 18, y: nave.y, speed: 7 });
-    }
 
-    document.addEventListener("keydown", e => {
-      if (e.code === "Space") atirar();
-    });
+let pontos = 0;
+let recorde = localStorage.getItem("recordeNave") || 0;
 
-    function criarInimigo() {
-      inimigos.push({
-        x: Math.random() * 360,
-        y: -40,
-        w: 40,
-        h: 40,
-        speed: 2
-      });
-    }
 
-    setInterval(criarInimigo, 1200);
+const teclas = {};
+document.addEventListener("keydown", e => teclas[e.key] = true);
+document.addEventListener("keyup", e => teclas[e.key] = false);
 
-    function atualizar() {
-      if (teclas["ArrowLeft"] && nave.x > 0) nave.x -= nave.speed;
-      if (teclas["ArrowRight"] && nave.x < 360) nave.x += nave.speed;
 
-      tiros.forEach(t => t.y -= t.speed);
-      inimigos.forEach(i => i.y += i.speed);
+function atirar() {
+if (tiros.length < 5) {
+tiros.push({ x: nave.x + 18, y: nave.y, speed: 7 });
+}
+}
 
-      inimigos.forEach(i => {
-        if (Math.random() < 0.01) {
-          tirosInimigos.push({ x: i.x + 18, y: i.y + 40, speed: 4 });
-        }
-      });
 
-      tirosInimigos.forEach(t => t.y += t.speed);
+function criarInimigo() {
+inimigos.push({
+x: Math.random() * 360,
+y: -40,
+w: 40,
+h: 40,
+speed: 2
+});
+}
 
-      colisao();
-    }
 
-    function colisao() {
-      tiros.forEach((t, ti) => {
-        inimigos.forEach((i, ii) => {
-          if (t.x < i.x + i.w && t.x + 5 > i.x && t.y < i.y + i.h && t.y + 10 > i.y) {
-            inimigos.splice(ii, 1);
-            tiros.splice(ti, 1);
-          }
-        });
-      });
-    }
+setInterval(criarInimigo, 1200);
 
-    function desenhar() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      ctx.fillStyle = "cyan";
-      ctx.fillRect(nave.x, nave.y, nave.w, nave.h);
+function atualizar() {
+if (teclas["ArrowLeft"] && nave.x > 0) nave.x -= nave.speed;
+if (teclas["ArrowRight"] && nave.x < 360) nave.x += nave.speed;
+if (teclas["ArrowUp"]) atirar();
 
-      ctx.fillStyle = "yellow";
-      tiros.forEach(t => ctx.fillRect(t.x, t.y, 5, 10));
 
-      ctx.fillStyle = "red";
-      inimigos.forEach(i => ctx.fillRect(i.x, i.y, i.w, i.h));
+tiros.forEach(t => t.y -= t.speed);
+inimigos.forEach(i => i.y += i.speed);
 
-      ctx.fillStyle = "orange";
-      tirosInimigos.forEach(t => ctx.fillRect(t.x, t.y, 5, 10));
-    }
 
-    function loop() {
-      atualizar();
-      desenhar();
-      requestAnimationFrame(loop);
-    }
+inimigos.forEach(i => {
+if (Math.random() < 0.01) {
+tirosInimigos.push({ x: i.x + 18, y: i.y + 40, speed: 4 });
+}
+});
 
-    loop();
-  </script>
-</body>
+
+tirosInimigos.forEach(t => t.y += t.speed);
+
+
+colisao();
+}
+
+
+function colisao() {
+tiros.forEach((t, ti) => {
+inimigos.forEach((i, ii) => {
+if (t.x < i.x + i.w && t.x + 5 > i.x && t.y < i.y + i.h && t.y + 10 > i.y) {
+inimigos.splice(ii, 1);
+tiros.splice(ti, 1);
+pontos += 10;
+}
+});
+});
+
+
+tirosInimigos.forEach((t, ti) => {
+if (t.x < nave.x + nave.w && t.x + 5 > nave.x && t.y < nave.y + nave.h && t.y + 10 > nave.y) {
 </html>
