@@ -76,7 +76,14 @@
       if (teclas["ArrowRight"] && nave.x < 360) nave.x += nave.speed;
       if (teclas["ArrowUp"]) atirar();
 
+      // mover tiros do jogador
       tiros.forEach(t => t.y -= t.speed);
+      // remover tiros fora da tela
+      for (let i = tiros.length - 1; i >= 0; i--) {
+        if (tiros[i].y < -20) tiros.splice(i, 1);
+      }
+
+      // mover inimigos
       inimigos.forEach(i => i.y += i.speed);
 
       inimigos.forEach(i => {
@@ -85,7 +92,12 @@
         }
       });
 
+      // mover tiros inimigos
       tirosInimigos.forEach(t => t.y += t.speed);
+      for (let i = tirosInimigos.length - 1; i >= 0; i--) {
+        if (tirosInimigos[i].y > canvas.height + 20) tirosInimigos.splice(i, 1);
+      }
+
       colisao();
     }
 
