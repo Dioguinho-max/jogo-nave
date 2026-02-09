@@ -21,7 +21,7 @@
 </head>
 <body>
   <h2>🚀 Jogo da Nave Espacial</h2>
-  <p>← → mover | ↑ atirar</p>
+  <p>← → mover | ↑ atirar | R reiniciar</p>
   <canvas id="game" width="400" height="600"></canvas>
 
   <script>
@@ -53,8 +53,9 @@
     document.addEventListener("keydown", e => teclas[e.key] = true);
     document.addEventListener("keyup", e => teclas[e.key] = false);
 
+    // CONTROLE DE TIRO (rate limit)
     let ultimoTiro = 0;
-    const intervaloTiro = 180; // ms (controle para não virar metralhadora)
+    const intervaloTiro = 180; // ms
 
     function atirar() {
       const agora = Date.now();
@@ -65,11 +66,16 @@
         tiros.push({ x: nave.x + nave.w / 2 - 2, y: nave.y, speed: 7 });
       }
     }
-    }
 
     function criarInimigo() {
       if (!fimDeJogo) {
-        inimigos.push({ x: Math.random() * 360, y: -40, w: 40, h: 40, speed: 2 });
+        inimigos.push({
+          x: Math.random() * 360,
+          y: -40,
+          w: 40,
+          h: 40,
+          speed: 2
+        });
       }
     }
 
@@ -82,23 +88,21 @@
       if (teclas["ArrowRight"] && nave.x < 360) nave.x += nave.speed;
       if (teclas["ArrowUp"]) atirar();
 
-      // mover tiros do jogador
+      // tiros do jogador
       tiros.forEach(t => t.y -= t.speed);
-      // remover tiros fora da tela
       for (let i = tiros.length - 1; i >= 0; i--) {
         if (tiros[i].y < -20) tiros.splice(i, 1);
       }
 
-      // mover inimigos
+      // inimigos
       inimigos.forEach(i => i.y += i.speed);
-
       inimigos.forEach(i => {
         if (Math.random() < 0.01) {
           tirosInimigos.push({ x: i.x + 18, y: i.y + 40, speed: 4 });
         }
       });
 
-      // mover tiros inimigos
+      // tiros inimigos
       tirosInimigos.forEach(t => t.y += t.speed);
       for (let i = tirosInimigos.length - 1; i >= 0; i--) {
         if (tirosInimigos[i].y > canvas.height + 20) tirosInimigos.splice(i, 1);
@@ -132,7 +136,7 @@
         }
       });
 
-      // nave x inimigo (dano por colisão)
+      // nave x inimigo
       inimigos.forEach((i, ii) => {
         if (nave.x < i.x + i.w && nave.x + nave.w > i.x && nave.y < i.y + i.h && nave.y + nave.h > i.y) {
           inimigos.splice(ii, 1);
@@ -154,7 +158,7 @@
     }
 
     document.addEventListener("keydown", e => {
-      if (fimDeJogo && e.key.toLowerCase() === 'r') location.reload();
+      if (fimDeJogo && e.key.toLowerCase() === "r") location.reload();
     });
 
     function desenharHUD() {
