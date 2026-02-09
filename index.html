@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
@@ -6,7 +7,7 @@
   <style>
     body {
       margin: 0;
-      background: black;
+      background: radial-gradient(circle at top, #020024, #000000);
       color: white;
       text-align: center;
       font-family: Arial, sans-serif;
@@ -20,7 +21,7 @@
   </style>
 </head>
 <body>
-  <h2>🚀 Jogo da Nave (versão estável)</h2>
+  <h2>🚀 Jogo da Nave Espacial</h2>
   <p>← → mover | ↑ atirar</p>
   <canvas id="game" width="400" height="600"></canvas>
 
@@ -31,34 +32,47 @@
     // IMAGENS
     const imgNave = new Image(); imgNave.src = "playerShip1_red.png";
     const imgInimigo = new Image(); imgInimigo.src = "enemyBlue1.png";
-    const imgLaser = new Image(); imgLaser.src = "laserRed06.png";
+    const imgLaserPlayer = new Image(); imgLaserPlayer.src = "laserRed06.png";
+    const imgLaserInimigo = new Image(); imgLaserInimigo.src = "laserBlue08.png";
+    const imgGameOver = new Image(); imgGameOver.src = "gameover.png";
 
-    const nave = { x: 180, y: 520, w: 40, h: 40, speed: 5 };
+    // SONS
+    const somTiro = new Audio("shot.mp3");
+    const somExplosao = new Audio("explosion.mp3");
+    const somGameOver = new Audio("gameover.mp3");
+
+    const nave = { x: 180, y: 520, w: 40, h: 40, speed: 5, vidas: 3 };
     const tiros = [];
     const inimigos = [];
+    const tirosInimigos = [];
+
+    let pontos = 0;
+    let recorde = localStorage.getItem("recordeNave") || 0;
+    let fimDeJogo = false;
 
     const teclas = {};
     document.addEventListener("keydown", e => teclas[e.key] = true);
     document.addEventListener("keyup", e => teclas[e.key] = false);
 
-    let ultimoTiro = 0;
-    const intervaloTiro = 250;
-
     function atirar() {
-      const agora = Date.now();
-      if (agora - ultimoTiro > intervaloTiro) {
-        ultimoTiro = agora;
-        tiros.push({ x: nave.x + nave.w / 2 - 2, y: nave.y, speed: 7 });
+      if (tiros.length < 5 && !fimDeJogo) {
+        somTiro.currentTime = 0;
+        somTiro.play();
+        tiros.push({ x: nave.x + 18, y: nave.y, speed: 7 });
       }
     }
 
     function criarInimigo() {
-      inimigos.push({ x: Math.random() * 360, y: -40, w: 40, h: 40, speed: 2 });
+      if (!fimDeJogo) {
+        inimigos.push({ x: Math.random() * 360, y: -40, w: 40, h: 40, speed: 2 });
+      }
     }
 
     setInterval(criarInimigo, 1200);
 
     function atualizar() {
+      if (fimDeJogo) return;
+
       if (teclas["ArrowLeft"] && nave.x > 0) nave.x -= nave.speed;
       if (teclas["ArrowRight"] && nave.x < 360) nave.x += nave.speed;
       if (teclas["ArrowUp"]) atirar();
@@ -66,21 +80,72 @@
       tiros.forEach(t => t.y -= t.speed);
       inimigos.forEach(i => i.y += i.speed);
 
-      for (let i = tiros.length - 1; i >= 0; i--) {
-        if (tiros[i].y < -20) tiros.splice(i, 1);
-      }
+      inimigos.forEach(i => {
+        if (Math.random() < 0.01) {
+          tirosInimigos.push({ x: i.x + 18, y: i.y + 40, speed: 4 });
+        }
+      });
 
-      for (let i = inimigos.length - 1; i >= 0; i--) {
-        if (inimigos[i].y > canvas.height + 40) inimigos.splice(i, 1);
+      tirosInimigos.forEach(t => t.y += t.speed);
+      colisao();
+    }
+
+    function colisao() {
+      tiros.forEach((t, ti) => {
+        inimigos.forEach((i, ii) => {
+          if (t.x < i.x + i.w && t.x + 5 > i.x && t.y < i.y + i.h && t.y + 10 > i.y) {
+            somExplosao.currentTime = 0;
+            somExplosao.play();
+            inimigos.splice(ii, 1);
+            tiros.splice(ti, 1);
+            pontos += 10;
+          }
+        });
+      });
+
+      tirosInimigos.forEach((t, ti) => {
+        if (t.x < nave.x + nave.w && t.x + 5 > nave.x && t.y < nave.y + nave.h && t.y + 10 > nave.y) {
+          tirosInimigos.splice(ti, 1);
+          nave.vidas--;
+          if (nave.vidas <= 0) gameOver();
+        }
+      });
+    }
+
+    function gameOver() {
+      fimDeJogo = true;
+      somGameOver.play();
+      if (pontos > recorde) {
+        recorde = pontos;
+        localStorage.setItem("recordeNave", recorde);
       }
+    }
+
+    document.addEventListener("keydown", e => {
+      if (fimDeJogo && e.key.toLowerCase() === 'r') location.reload();
+    });
+
+    function desenharHUD() {
+      ctx.fillStyle = "white";
+      ctx.font = "16px Arial";
+      ctx.fillText(`Pontos: ${pontos}`, 10, 20);
+      ctx.fillText(`Vidas: ${nave.vidas}`, 10, 40);
+      ctx.fillText(`Recorde: ${recorde}`, 10, 60);
     }
 
     function desenhar() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
       ctx.drawImage(imgNave, nave.x, nave.y, nave.w, nave.h);
-      tiros.forEach(t => ctx.drawImage(imgLaser, t.x, t.y, 5, 15));
+      tiros.forEach(t => ctx.drawImage(imgLaserPlayer, t.x, t.y, 5, 15));
       inimigos.forEach(i => ctx.drawImage(imgInimigo, i.x, i.y, i.w, i.h));
+      tirosInimigos.forEach(t => ctx.drawImage(imgLaserInimigo, t.x, t.y, 5, 15));
+
+      desenharHUD();
+
+      if (fimDeJogo) {
+        ctx.drawImage(imgGameOver, 40, 200, 320, 200);
+      }
     }
 
     function loop() {
