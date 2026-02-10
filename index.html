@@ -1,179 +1,196 @@
-<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-  <meta charset="UTF-8">
-  <title>Jogo da Nave</title>
-  <style>
-    body {
-      margin: 0;
-      background: radial-gradient(circle at top, #020024, #000000);
-      color: white;
-      text-align: center;
-      font-family: Arial, sans-serif;
-    }
-    canvas {
-      background: black;
-      display: block;
-      margin: auto;
-      border: 2px solid #0ff;
-    }
-  </style>
-</head>
-<body>
-  <h2>🚀 Jogo da Nave Espacial</h2>
-  <p>← → mover | ↑ atirar | R reiniciar</p>
-  <canvas id="game" width="900" height="600"></canvas>
+<script>
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
 
-  <script>
-    const canvas = document.getElementById("game");
-    const ctx = canvas.getContext("2d");
+canvas.width = 900;
+canvas.height = 600;
 
-    // IMAGENS
-    const imgNave = new Image(); imgNave.src = "playerShip1_red.png";
-    const imgInimigo = new Image(); imgInimigo.src = "enemyBlue1.png";
-    const imgLaserPlayer = new Image(); imgLaserPlayer.src = "laserRed06.png";
-    const imgLaserInimigo = new Image(); imgLaserInimigo.src = "laserBlue08.png";
-    const imgGameOver = new Image(); imgGameOver.src = "gameover.png";
+const scoreEl = document.getElementById("score");
+const livesEl = document.getElementById("lives");
 
-    // SONS (opcional – se falhar no Pages, o jogo continua)
-    const somTiro = new Audio("shot.mp3");
-    const somExplosao = new Audio("explosion.mp3");
-    const somGameOver = new Audio("gameover.mp3");
+// IMAGENS
+const playerImg = new Image();
+playerImg.src = "playerShip1_red.png";
 
-    const nave = { x: 180, y: 520, w: 40, h: 40, speed: 5, vidas: 3 };
-    const tiros = [];
-    const inimigos = [];
-    const tirosInimigos = [];
+const enemyImg = new Image();
+enemyImg.src = "enemyBlue1.png";
 
-    let pontos = 0;
-    let recorde = Number(localStorage.getItem("recordeNave")) || 0;
-    let fimDeJogo = false;
+const laserPlayerImg = new Image();
+laserPlayerImg.src = "laserRed06.png";
 
-    const teclas = {};
-    document.addEventListener("keydown", e => teclas[e.key] = true);
-    document.addEventListener("keyup", e => teclas[e.key] = false);
+const laserEnemyImg = new Image();
+laserEnemyImg.src = "laserBlue08.png";
 
-    let ultimoTiro = 0;
-    const intervaloTiro = 250; // limite saudável
+// JOGADOR
+const player = {
+    x: canvas.width / 2 - 25,
+    y: canvas.height - 80,
+    width: 50,
+    height: 50,
+    speed: 6,
+    lives: 3
+};
 
-    function atirar() {
-      const agora = Date.now();
-      if (agora - ultimoTiro >= intervaloTiro && !fimDeJogo) {
-        ultimoTiro = agora;
-        try { somTiro.currentTime = 0; somTiro.play(); } catch {}
-        tiros.push({ x: nave.x + nave.w / 2 - 2, y: nave.y, speed: 7 });
-      }
-    }
+// CONTROLES
+const keys = {};
+document.addEventListener("keydown", e => keys[e.key] = true);
+document.addEventListener("keyup", e => keys[e.key] = false);
 
-    function criarInimigo() {
-      if (!fimDeJogo) {
-        inimigos.push({ x: Math.random() * 360, y: -40, w: 40, h: 40, speed: 2 });
-      }
-    }
+// TIROS
+let bullets = [];
+let bulletCooldown = 0;
 
-    setInterval(criarInimigo, 1200);
+// INIMIGOS
+let enemies = [];
+let enemyBullets = [];
+let enemySpawnTimer = 0;
 
-    function atualizar() {
-      if (fimDeJogo) return;
+// PROGRESSÃO DE DIFICULDADE 🔥
+let difficulty = 1;
+let spawnRate = 70;
+let enemySpeed = 2;
+let enemyShootChance = 0;
 
-      if (teclas["ArrowLeft"] && nave.x > 0) nave.x -= nave.speed;
-      if (teclas["ArrowRight"] && nave.x < 360) nave.x += nave.speed;
-      if (teclas["ArrowUp"]) atirar();
+// SCORE
+let score = 0;
+let gameOver = false;
 
-      // tiros do jogador
-      tiros.forEach(t => t.y -= t.speed);
-      for (let i = tiros.length - 1; i >= 0; i--) {
-        if (tiros[i].y < -20) tiros.splice(i, 1);
-      }
-
-      // inimigos
-      inimigos.forEach(i => i.y += i.speed);
-      for (let i = inimigos.length - 1; i >= 0; i--) {
-        if (inimigos[i].y > canvas.height + 40) inimigos.splice(i, 1);
-      }
-
-      // tiros inimigos
-      inimigos.forEach(i => {
-        if (Math.random() < 0.01) {
-          tirosInimigos.push({ x: i.x + 18, y: i.y + 40, speed: 4 });
-        }
-      });
-
-      tirosInimigos.forEach(t => t.y += t.speed);
-      for (let i = tirosInimigos.length - 1; i >= 0; i--) {
-        if (tirosInimigos[i].y > canvas.height + 20) tirosInimigos.splice(i, 1);
-      }
-
-      colisao();
-    }
-
-    function colisao() {
-      // tiro do jogador x inimigo
-      tiros.forEach((t, ti) => {
-        inimigos.forEach((i, ii) => {
-          if (t.x < i.x + i.w && t.x + 5 > i.x && t.y < i.y + i.h && t.y + 10 > i.y) {
-            try { somExplosao.currentTime = 0; somExplosao.play(); } catch {}
-            inimigos.splice(ii, 1);
-            tiros.splice(ti, 1);
-            pontos += 10;
-          }
+function shoot() {
+    if (bulletCooldown <= 0) {
+        bullets.push({
+            x: player.x + player.width / 2 - 4,
+            y: player.y,
+            width: 8,
+            height: 20,
+            speed: 9
         });
-      });
-
-      // tiro inimigo x nave
-      tirosInimigos.forEach((t, ti) => {
-        if (t.x < nave.x + nave.w && t.x + 5 > nave.x && t.y < nave.y + nave.h && t.y + 10 > nave.y) {
-          tirosInimigos.splice(ti, 1);
-          nave.vidas--;
-          try { somExplosao.play(); } catch {}
-          if (nave.vidas <= 0) gameOver();
-        }
-      });
+        bulletCooldown = 14;
     }
+}
 
-    function gameOver() {
-      fimDeJogo = true;
-      try { somGameOver.play(); } catch {}
-      if (pontos > recorde) {
-        recorde = pontos;
-        localStorage.setItem("recordeNave", recorde);
-      }
-    }
+function spawnEnemy() {
+    enemies.push({
+        x: Math.random() * (canvas.width - 40),
+        y: -50,
+        width: 40,
+        height: 40,
+        speed: enemySpeed,
+        shootCooldown: Math.random() * 120
+    });
+}
 
-    document.addEventListener("keydown", e => {
-      if (fimDeJogo && e.key.toLowerCase() === 'r') location.reload();
+function rectCollision(a, b) {
+    return a.x < b.x + b.width &&
+           a.x + a.width > b.x &&
+           a.y < b.y + b.height &&
+           a.y + a.height > b.y;
+}
+
+// LOOP
+function update() {
+    if (gameOver) return;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // MOVIMENTO
+    if (keys["ArrowLeft"] && player.x > 0) player.x -= player.speed;
+    if (keys["ArrowRight"] && player.x < canvas.width - player.width) player.x += player.speed;
+    if (keys["ArrowUp"]) shoot();
+
+    if (bulletCooldown > 0) bulletCooldown--;
+
+    ctx.drawImage(playerImg, player.x, player.y, player.width, player.height);
+
+    // TIROS JOGADOR
+    bullets.forEach((b, i) => {
+        b.y -= b.speed;
+        ctx.drawImage(laserPlayerImg, b.x, b.y, b.width, b.height);
+        if (b.y < 0) bullets.splice(i, 1);
     });
 
-    function desenharHUD() {
-      ctx.fillStyle = "white";
-      ctx.font = "16px Arial";
-      ctx.fillText(`Pontos: ${pontos}`, 10, 20);
-      ctx.fillText(`Vidas: ${nave.vidas}`, 10, 40);
-      ctx.fillText(`Recorde: ${recorde}`, 10, 60);
+    // SPAWN INIMIGOS
+    enemySpawnTimer++;
+    if (enemySpawnTimer > spawnRate) {
+        spawnEnemy();
+        enemySpawnTimer = 0;
     }
 
-    function desenhar() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    // INIMIGOS
+    enemies.forEach((e, ei) => {
+        e.y += e.speed;
+        ctx.drawImage(enemyImg, e.x, e.y, e.width, e.height);
 
-      ctx.drawImage(imgNave, nave.x, nave.y, nave.w, nave.h);
-      tiros.forEach(t => ctx.drawImage(imgLaserPlayer, t.x, t.y, 5, 15));
-      inimigos.forEach(i => ctx.drawImage(imgInimigo, i.x, i.y, i.w, i.h));
-      tirosInimigos.forEach(t => ctx.drawImage(imgLaserInimigo, t.x, t.y, 5, 15));
+        // TIRO INIMIGO (só depois de certo tempo)
+        e.shootCooldown--;
+        if (difficulty > 2 && e.shootCooldown <= 0 && Math.random() < enemyShootChance) {
+            enemyBullets.push({
+                x: e.x + e.width / 2 - 3,
+                y: e.y + e.height,
+                width: 6,
+                height: 16,
+                speed: 5
+            });
+            e.shootCooldown = 120;
+        }
 
-      desenharHUD();
+        // COLISÃO COM JOGADOR
+        if (rectCollision(player, e)) {
+            enemies.splice(ei, 1);
+            player.lives--;
+            livesEl.textContent = player.lives;
+            if (player.lives <= 0) gameOver = true;
+        }
 
-      if (fimDeJogo) {
-        ctx.drawImage(imgGameOver, 40, 200, 320, 200);
-      }
+        // COLISÃO COM TIROS
+        bullets.forEach((b, bi) => {
+            if (rectCollision(b, e)) {
+                enemies.splice(ei, 1);
+                bullets.splice(bi, 1);
+                score += 10;
+                scoreEl.textContent = score;
+            }
+        });
+
+        if (e.y > canvas.height) enemies.splice(ei, 1);
+    });
+
+    // TIROS INIMIGOS
+    enemyBullets.forEach((b, i) => {
+        b.y += b.speed;
+        ctx.drawImage(laserEnemyImg, b.x, b.y, b.width, b.height);
+
+        if (rectCollision(player, b)) {
+            enemyBullets.splice(i, 1);
+            player.lives--;
+            livesEl.textContent = player.lives;
+            if (player.lives <= 0) gameOver = true;
+        }
+
+        if (b.y > canvas.height) enemyBullets.splice(i, 1);
+    });
+
+    // 🔥 AUMENTO DE DIFICULDADE
+    if (score > difficulty * 100) {
+        difficulty++;
+        enemySpeed += 0.4;
+        spawnRate = Math.max(25, spawnRate - 5);
+        enemyShootChance += 0.03;
     }
 
-    function loop() {
-      atualizar();
-      desenhar();
-      requestAnimationFrame(loop);
+    if (gameOver) {
+        ctx.fillStyle = "red";
+        ctx.font = "48px Arial";
+        ctx.fillText("GAME OVER", canvas.width / 2 - 140, canvas.height / 2);
+        ctx.font = "22px Arial";
+        ctx.fillText("Pressione R para reiniciar", canvas.width / 2 - 150, canvas.height / 2 + 40);
     }
 
-    loop();
-  </script>
-</body>
-</html>
+    requestAnimationFrame(update);
+}
+
+document.addEventListener("keydown", e => {
+    if (e.key.toLowerCase() === "r" && gameOver) location.reload();
+});
+
+update();
+</script>
