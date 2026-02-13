@@ -23,7 +23,6 @@ Um jogo simples e divertido desenvolvido em **HTML5 + JavaScript**, onde você c
 * Inimigos que atiram
 * Sons e sprites personalizados
 * Tela de Game Over
-* Compatível com GitHub Pages
 
 ---
 
